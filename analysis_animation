@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Algorithm Growth Visualizer</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f5f7fb;
+        color: #1f2937;
+    }
+
+    header {
+        background: #17365d;
+        color: white;
+        padding: 24px;
+        text-align: center;
+    }
+
+    header h1 {
+        margin: 0 0 8px;
+    }
+
+    header p {
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    .container {
+        max-width: 1100px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+
+    .panel {
+        background: white;
+        padding: 22px;
+        margin-bottom: 22px;
+        border-radius: 12px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    }
+
+    .controls {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    input[type="range"] {
+        width: 260px;
+    }
+
+    button {
+        background: #17365d;
+        color: white;
+        border: none;
+        padding: 11px 20px;
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 15px;
+    }
+
+    button:hover {
+        background: #244f82;
+    }
+
+    #nValue {
+        font-weight: bold;
+        font-size: 20px;
+        color: #17365d;
+    }
+
+    canvas {
+        width: 100%;
+        height: 420px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+
+    th, td {
+        border: 1px solid #d1d5db;
+        padding: 11px;
+        text-align: center;
+    }
+
+    th {
+        background: #17365d;
+        color: white;
+    }
+
+    .explanation {
+        line-height: 1.7;
+    }
+
+    .best {
+        color: #087f5b;
+        font-weight: bold;
+    }
+
+    footer {
+        text-align: center;
+        padding: 25px;
+        color: #6b7280;
+    }
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Algorithm Analysis and Growth of Functions</h1>
+    <p>Interactive Time Complexity Visualizer</p>
+</header>
+
+<div class="container">
+
+    <div class="panel">
+
+        <h2>Experiment</h2>
+
+        <p>
+            Increase the input size <b>n</b> and observe how the number
+            of operations grows for different complexity classes.
+        </p>
+
+        <div class="controls">
+
+            <label>
+                Input size n:
+                <span id="nValue">1</span>
+            </label>
+
+            <input
+                type="range"
+                id="nSlider"
+                min="1"
+                max="50"
+                value="1"
+            >
+
+            <button id="playBtn">▶ Play Animation</button>
+
+            <button id="resetBtn">Reset</button>
+
+        </div>
+
+    </div>
+
+
+    <div class="panel">
+
+        <h2>Growth Rate Graph</h2>
+
+        <canvas id="growthCanvas"
+                width="1000"
+                height="420">
+        </canvas>
+
+    </div>
+
+
+    <div class="panel">
+
+        <h2>Current Operation Count</h2>
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Complexity</th>
+                    <th>Function</th>
+                    <th>Operations</th>
+                </tr>
+            </thead>
+
+            <tbody id="resultTable"></tbody>
+
+        </table>
+
+    </div>
+
+
+    <div class="panel explanation">
+
+        <h2>What Does the Experiment Show?</h2>
+
+        <p>
+            When the input size is small, the difference between
+            algorithms may appear insignificant. As <b>n</b> increases,
+            however, their growth rates become very different.
+        </p>
+
+        <p>
+            <span class="best">O(1)</span> remains constant,
+            O(log n) grows very slowly, O(n) grows proportionally
+            with the input size, while O(n log n) and O(n²)
+            require increasingly more operations.
+        </p>
+
+        <p>
+            This demonstrates the main idea of asymptotic analysis:
+            for large inputs, the <b>dominant growth term</b>
+            determines the scalability of an algorithm.
+        </p>
+
+    </div>
+
+</div>
+
+
+<footer>
+    Design and Analysis of Algorithms |
+    Algorithm Growth Experiment
+</footer>
+
+
+<script>
+
+const slider = document.getElementById("nSlider");
+const nValue = document.getElementById("nValue");
+const table = document.getElementById("resultTable");
+
+const canvas = document.getElementById("growthCanvas");
+const ctx = canvas.getContext("2d");
+
+let timer = null;
+
+
+/* Complexity functions */
+
+function complexityValues(n) {
+
+    return [
+        {
+            name: "O(1)",
+            formula: "1",
+            value: 1
+        },
+
+        {
+            name: "O(log n)",
+            formula: "log₂(n)",
+            value: Math.log2(n)
+        },
+
+        {
+            name: "O(n)",
+            formula: "n",
+            value: n
+        },
+
+        {
+            name: "O(n log n)",
+            formula: "n × log₂(n)",
+            value: n * Math.log2(n)
+        },
+
+        {
+            name: "O(n²)",
+            formula: "n²",
+            value: n * n
+        }
+    ];
+}
+
+
+/* Update table */
+
+function updateTable(n) {
+
+    const values = complexityValues(n);
+
+    table.innerHTML = "";
+
+    values.forEach(item => {
+
+        const row = document.createElement("tr");
+
+        row.innerHTML =
+            "<td><b>" + item.name + "</b></td>" +
+            "<td>" + item.formula + "</td>" +
+            "<td>" + item.value.toFixed(2) + "</td>";
+
+        table.appendChild(row);
+
+    });
+
+}
+
+
+/* Draw graph */
+
+function drawGraph(maxN) {
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    const padding = 55;
+
+    const graphWidth =
+        canvas.width - padding * 2;
+
+    const graphHeight =
+        canvas.height - padding * 2;
+
+
+    /* Axes */
+
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        padding,
+        padding
+    );
+
+    ctx.lineTo(
+        padding,
+        canvas.height - padding
+    );
+
+    ctx.lineTo(
+        canvas.width - padding,
+        canvas.height - padding
+    );
+
+    ctx.stroke();
+
+
+    /* Axis labels */
+
+    ctx.fillStyle = "#333";
+    ctx.font = "16px Arial";
+
+    ctx.fillText(
+        "Operations",
+        10,
+        30
+    );
+
+    ctx.fillText(
+        "Input Size (n)",
+        canvas.width - 140,
+        canvas.height - 15
+    );
+
+
+    const maxY =
+        Math.max(10, maxN * maxN);
+
+
+    const functions = [
+
+        {
+            label: "O(1)",
+            color: "#6b7280",
+            fn: n => 1
+        },
+
+        {
+            label: "O(log n)",
+            color: "#16a085",
+            fn: n => Math.log2(n)
+        },
+
+        {
+            label: "O(n)",
+            color: "#2563eb",
+            fn: n => n
+        },
+
+        {
+            label: "O(n log n)",
+            color: "#f59e0b",
+            fn: n => n * Math.log2(n)
+        },
+
+        {
+            label: "O(n²)",
+            color: "#dc2626",
+            fn: n => n * n
+        }
+
+    ];
+
+
+    functions.forEach((func, index) => {
+
+        ctx.strokeStyle = func.color;
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+
+        for (let n = 1; n <= maxN; n++) {
+
+            const value = func.fn(n);
+
+            const x =
+                padding +
+                ((n - 1) /
+                Math.max(1, maxN - 1))
+                * graphWidth;
+
+            const y =
+                canvas.height -
+                padding -
+                (value / maxY)
+                * graphHeight;
+
+
+            if (n === 1) {
+
+                ctx.moveTo(x, y);
+
+            } else {
+
+                ctx.lineTo(x, y);
+
+            }
+
+        }
+
+        ctx.stroke();
+
+
+        /* Legend */
+
+        ctx.fillStyle = func.color;
+
+        ctx.fillRect(
+            80 + index * 160,
+            20,
+            18,
+            4
+        );
+
+        ctx.fillStyle = "#222";
+        ctx.font = "14px Arial";
+
+        ctx.fillText(
+            func.label,
+            105 + index * 160,
+            26
+        );
+
+    });
+
+}
+
+
+/* Update everything */
+
+function update() {
+
+    const n = Number(slider.value);
+
+    nValue.textContent = n;
+
+    updateTable(n);
+
+    drawGraph(n);
+
+}
+
+
+/* Slider */
+
+slider.addEventListener(
+    "input",
+    update
+);
+
+
+/* Animation */
+
+document
+.getElementById("playBtn")
+.addEventListener(
+    "click",
+    function() {
+
+        if (timer) {
+
+            clearInterval(timer);
+
+        }
+
+        slider.value = 1;
+
+        update();
+
+        timer = setInterval(
+            function() {
+
+                let n =
+                    Number(slider.value);
+
+                if (n >= 50) {
+
+                    clearInterval(timer);
+
+                    timer = null;
+
+                    return;
+
+                }
+
+                slider.value = n + 1;
+
+                update();
+
+            },
+            150
+        );
+
+    }
+);
+
+
+/* Reset */
+
+document
+.getElementById("resetBtn")
+.addEventListener(
+    "click",
+    function() {
+
+        if (timer) {
+
+            clearInterval(timer);
+
+            timer = null;
+
+        }
+
+        slider.value = 1;
+
+        update();
+
+    }
+);
+
+
+update();
+
+</script>
+
+</body>
+</html>
